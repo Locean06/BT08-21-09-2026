@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+
+<head>
+    <title>Quản lý Category</title>
+</head>
+
+<body>
+
+<section layout:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-1">
+                Quản lý Category
+            </h2>
+        </div>
+
+        <button
+                type="button"
+                class="btn btn-primary"
+                onclick="openCreateCategory()">
+            + Thêm Category
+        </button>
+
+    </div>
+
+    <div id="categoryMessage"></div>
+
+    <div class="table-responsive">
+
+        <table class="table table-bordered table-hover align-middle">
+
+            <thead class="table-dark">
+
+            <tr>
+
+                <th style="width: 80px;">
+                    ID
+                </th>
+
+                <th>
+                    Tên Category
+                </th>
+
+                <th>
+                    Images
+                </th>
+
+                <th style="width: 180px;">
+                    Thao tác
+                </th>
+
+            </tr>
+
+            </thead>
+
+            <tbody id="categoryBody">
+
+            <tr>
+                <td
+                        colspan="4"
+                        class="text-center text-muted">
+
+                    Đang tải dữ liệu...
+
+                </td>
+            </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <div
+            class="modal fade"
+            id="categoryModal"
+            tabindex="-1"
+            aria-hidden="true">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <form id="categoryForm">
+
+                    <div class="modal-header">
+
+                        <h5
+                                class="modal-title"
+                                id="categoryModalTitle">
+
+                            Category
+
+                        </h5>
+
+                        <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal">
+                        </button>
+
+                    </div>
+
+
+                    <div class="modal-body">
+
+                        <input
+                                type="hidden"
+                                id="categoryId">
+
+                        <input
+                                type="hidden"
+                                id="categoryCurrentImages">
+
+
+                        <div class="mb-3">
+
+                            <label
+                                    for="categoryName"
+                                    class="form-label">
+
+                                Tên Category
+
+                            </label>
+
+                            <input
+                                    type="text"
+                                    class="form-control"
+                                    id="categoryName"
+                                    required>
+
+                        </div>
+
+
+                        <div class="mb-3">
+
+                            <label
+                                    for="categoryImages"
+                                    class="form-label">
+
+                                Images
+
+                            </label>
+
+                            <input
+                                    type="file"
+                                    class="form-control"
+                                    id="categoryImages"
+                                    accept="image/*">
+
+
+                            <div
+                                    id="categoryImagePreview"
+                                    class="mt-2">
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+
+                        <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+
+                            Đóng
+
+                        </button>
+
+                        <button
+                                type="submit"
+                                class="btn btn-primary">
+
+                            Lưu
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<th:block layout:fragment="script">
+
+<script>
+
+    let categoryModal;
+    let editingCategory = false;
+
+
+    $(document).ready(function () {
+
+        categoryModal = new bootstrap.Modal(
+            document.getElementById("categoryModal")
+        );
+
+        loadCategories();
+
+        $("#categoryForm").on(
+            "submit",
+            function (event) {
+
+                event.preventDefault();
+
+                saveCategory();
+            }
+        );
+    });
+
+
+    function graphqlRequest(
+        query,
+        variables = {}
+    ) {
+
+        return $.ajax({
+
+            url: "/graphql",
+
+            type: "POST",
+
+            contentType: "application/json",
+
+            data: JSON.stringify({
+                query: query,
+                variables: variables
+            })
+
+        }).then(function (response) {
+
+            if (
+                response.errors
+                && response.errors.length > 0
+            ) {
+
+                const message =
+                    response.errors[0].message
+                    || "Có lỗi xảy ra khi gọi GraphQL.";
+
+                return $.Deferred()
+                    .reject({
+                        responseJSON: response,
+                        message: message
+                    })
+                    .promise();
+            }
+
+            return response.data;
+        });
+    }
+
+
+    function loadCategories() {
+
+        const query = `
+            query {
+                categories {
+                    id
+                    name
+                    images
+                }
+            }
+        `;
+
+        graphqlRequest(query)
+
+            .done(function (data) {
+
+                renderCategories(
+                    data.categories
+                );
+            })
+
+            .fail(function (error) {
+
+                showMessage(
+                    getErrorMessage(error),
+                    "danger"
+                );
+
+                $("#categoryBody").html(`
+                    <tr>
+                        <td
+                            colspan="4"
+                            class="text-center text-danger">
+
+                            Không thể tải dữ liệu Category.
+
+                        </td>
+                    </tr>
+                `);
+            });
+    }
+
+
+    function renderCategories(categories) {
+
+        if (
+            !categories
+            || categories.length === 0
+        ) {
+
+            $("#categoryBody").html(`
+                <tr>
+                    <td
+                        colspan="4"
+                        class="text-center text-muted">
+
+                        Chưa có Category.
+
+                    </td>
+                </tr>
+            `);
+
+            return;
+        }
+
+        let html = "";
+
+
+        categories.forEach(
+            function (category) {
+
+                html += `
+                    <tr>
+
+                        <td>
+                            ${escapeHtml(category.id)}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(category.name)}
+                        </td>
+
+                        <td>
+
+                            ${
+                                category.images
+
+                                ? `
+                                    <img
+                                        src="${escapeHtml(
+                                            imageUrl(
+                                                category.images
+                                            )
+                                        )}"
+
+                                        alt="${escapeHtml(
+                                            category.name
+                                        )}"
+
+                                        width="70"
+                                        height="70"
+
+                                        style="
+                                            object-fit: cover;
+                                            border-radius: 6px;
+                                        ">
+                                `
+
+                                : `
+                                    <span class="text-muted">
+                                        Không có
+                                    </span>
+                                `
+                            }
+
+                        </td>
+
+                        <td>
+
+                            <button
+                                    type="button"
+                                    class="btn btn-warning btn-sm me-1"
+                                    onclick="editCategory('${category.id}')">
+
+                                Sửa
+
+                            </button>
+
+                            <button
+                                    type="button"
+                                    class="btn btn-danger btn-sm"
+                                    onclick="deleteCategory('${category.id}')">
+
+                                Xóa
+
+                            </button>
+
+                        </td>
+
+                    </tr>
+                `;
+            }
+        );
+
+
+        $("#categoryBody").html(html);
+    }
+
+
+    function openCreateCategory() {
+
+        editingCategory = false;
+
+        $("#categoryModalTitle")
+            .text("Thêm Category");
+
+        $("#categoryId")
+            .val("");
+
+        $("#categoryName")
+            .val("");
+
+        $("#categoryImages")
+            .val("");
+
+        $("#categoryCurrentImages")
+            .val("");
+
+        $("#categoryImagePreview")
+            .html("");
+
+        categoryModal.show();
+    }
+
+
+    function editCategory(id) {
+
+        const query = `
+            query GetCategory($id: ID!) {
+
+                category(id: $id) {
+
+                    id
+                    name
+                    images
+                }
+            }
+        `;
+
+
+        graphqlRequest(
+            query,
+            {
+                id: String(id)
+            }
+        )
+
+        .done(function (data) {
+
+            if (!data.category) {
+
+                showMessage(
+                    "Không tìm thấy Category.",
+                    "danger"
+                );
+
+                return;
+            }
+
+
+            editingCategory = true;
+
+
+            $("#categoryModalTitle")
+                .text("Sửa Category");
+
+
+            $("#categoryId")
+                .val(
+                    data.category.id
+                );
+
+
+            $("#categoryName")
+                .val(
+                    data.category.name
+                );
+
+
+            $("#categoryImages")
+                .val("");
+
+
+            $("#categoryCurrentImages")
+                .val(
+                    data.category.images || ""
+                );
+
+
+            if (data.category.images) {
+
+                $("#categoryImagePreview")
+                    .html(`
+
+                        <img
+                            src="${escapeHtml(
+                                imageUrl(
+                                    data.category.images
+                                )
+                            )}"
+
+                            alt="Ảnh hiện tại"
+
+                            width="100"
+                            height="100"
+
+                            style="
+                                object-fit: cover;
+                                border-radius: 6px;
+                            ">
+                    `);
+
+            } else {
+
+                $("#categoryImagePreview")
+                    .html("");
+            }
+
+
+            categoryModal.show();
+        })
+
+        .fail(function (error) {
+
+            showMessage(
+                getErrorMessage(error),
+                "danger"
+            );
+        });
+    }
+
+
+    function saveCategory() {
+
+        const id =
+            $("#categoryId")
+                .val();
+
+
+        const name =
+            $("#categoryName")
+                .val()
+                .trim();
+
+
+        const currentImages =
+            $("#categoryCurrentImages")
+                .val();
+
+
+        const file =
+            $("#categoryImages")[0]
+                .files[0];
+
+
+        if (!name) {
+
+            showMessage(
+                "Tên Category không được để trống.",
+                "warning"
+            );
+
+            return;
+        }
+
+
+        uploadCategoryImage(file)
+
+            .done(function (uploadedPath) {
+
+                const images =
+                    uploadedPath
+                    || currentImages
+                    || null;
+
+
+                if (editingCategory) {
+
+                    updateCategory(
+                        id,
+                        name,
+                        images
+                    );
+
+                } else {
+
+                    createCategory(
+                        name,
+                        images
+                    );
+                }
+            })
+
+            .fail(function (error) {
+
+                showMessage(
+                    getUploadErrorMessage(error),
+                    "danger"
+                );
+            });
+    }
+
+
+    function uploadCategoryImage(file) {
+
+        if (!file) {
+
+            return $.Deferred()
+                .resolve(null)
+                .promise();
+        }
+
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "file",
+            file
+        );
+
+
+        return $.ajax({
+
+            url:
+                "/upload/category-image",
+
+            type:
+                "POST",
+
+            data:
+                formData,
+
+            processData:
+                false,
+
+            contentType:
+                false
+
+        }).then(function (response) {
+
+            return response.path;
+        });
+    }
+
+
+    function createCategory(
+        name,
+        images
+    ) {
+
+        const mutation = `
+            mutation CreateCategory(
+                $name: String!,
+                $images: String
+            ) {
+
+                createCategory(
+                    name: $name,
+                    images: $images
+                ) {
+
+                    id
+                    name
+                    images
+                }
+            }
+        `;
+
+
+        graphqlRequest(
+            mutation,
+            {
+                name: name,
+                images: images || null
+            }
+        )
+
+        .done(function () {
+
+            categoryModal.hide();
+
+            showMessage(
+                "Thêm Category thành công.",
+                "success"
+            );
+
+            loadCategories();
+        })
+
+        .fail(function (error) {
+
+            showMessage(
+                getErrorMessage(error),
+                "danger"
+            );
+        });
+    }
+
+
+    function updateCategory(
+        id,
+        name,
+        images
+    ) {
+
+        const mutation = `
+            mutation UpdateCategory(
+                $id: ID!,
+                $name: String!,
+                $images: String
+            ) {
+
+                updateCategory(
+                    id: $id,
+                    name: $name,
+                    images: $images
+                ) {
+
+                    id
+                    name
+                    images
+                }
+            }
+        `;
+
+
+        graphqlRequest(
+            mutation,
+            {
+                id: String(id),
+                name: name,
+                images: images || null
+            }
+        )
+
+        .done(function () {
+
+            categoryModal.hide();
+
+            showMessage(
+                "Cập nhật Category thành công.",
+                "success"
+            );
+
+            loadCategories();
+        })
+
+        .fail(function (error) {
+
+            showMessage(
+                getErrorMessage(error),
+                "danger"
+            );
+        });
+    }
+
+
+    function deleteCategory(id) {
+
+        if (
+            !confirm(
+                "Bạn có chắc muốn xóa Category này?"
+            )
+        ) {
+            return;
+        }
+
+
+        const mutation = `
+            mutation DeleteCategory(
+                $id: ID!
+            ) {
+
+                deleteCategory(
+                    id: $id
+                )
+            }
+        `;
+
+
+        graphqlRequest(
+            mutation,
+            {
+                id: String(id)
+            }
+        )
+
+        .done(function (data) {
+
+            if (data.deleteCategory) {
+
+                showMessage(
+                    "Xóa Category thành công.",
+                    "success"
+                );
+
+                loadCategories();
+
+            } else {
+
+                showMessage(
+                    "Không thể xóa Category.",
+                    "danger"
+                );
+            }
+        })
+
+        .fail(function (error) {
+
+            showMessage(
+                getErrorMessage(error),
+                "danger"
+            );
+        });
+    }
+
+
+    function imageUrl(value) {
+
+        if (!value) {
+            return "";
+        }
+
+        if (
+            value.startsWith("/")
+            || value.startsWith("http://")
+            || value.startsWith("https://")
+        ) {
+
+            return value;
+        }
+
+        return "/uploads/categories/"
+            + value;
+    }
+
+
+    function showMessage(
+        message,
+        type
+    ) {
+
+        $("#categoryMessage")
+            .html(`
+
+                <div
+                    class="alert alert-${type} alert-dismissible fade show"
+                    role="alert">
+
+                    ${escapeHtml(message)}
+
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                    </button>
+
+                </div>
+            `);
+    }
+
+
+    function getUploadErrorMessage(error) {
+
+        if (
+            error
+            && error.responseJSON
+            && error.responseJSON.message
+        ) {
+
+            return error.responseJSON.message;
+        }
+
+        return "Không thể upload ảnh.";
+    }
+
+
+    function getErrorMessage(error) {
+
+        if (
+            error
+            && error.responseJSON
+            && error.responseJSON.errors
+            && error.responseJSON.errors.length > 0
+        ) {
+
+            return error
+                .responseJSON
+                .errors[0]
+                .message;
+        }
+
+
+        if (
+            error
+            && error.message
+        ) {
+
+            return error.message;
+        }
+
+
+        return "Có lỗi xảy ra.";
+    }
+
+
+    function escapeHtml(value) {
+
+        if (
+            value === null
+            || value === undefined
+        ) {
+
+            return "";
+        }
+
+
+        return $("<div>")
+            .text(
+                String(value)
+            )
+            .html();
+    }
+
+</script>
+
+</th:block>
+
+</body>
+</html>

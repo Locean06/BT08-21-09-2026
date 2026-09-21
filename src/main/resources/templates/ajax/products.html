@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+
+<head>
+    <title>Quản lý Product</title>
+</head>
+
+<body>
+
+<section layout:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-1">Quản lý Product</h2>
+        </div>
+
+        <button
+                type="button"
+                class="btn btn-primary"
+                onclick="openCreateProduct()">
+
+            + Thêm Product
+
+        </button>
+
+    </div>
+
+    <div id="productMessage"></div>
+
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Tìm kiếm Product
+                    </label>
+
+                    <input
+                            type="text"
+                            class="form-control"
+                            id="filterKeyword"
+                            placeholder="Nhập tên Product..."
+                            oninput="renderProducts()">
+
+                </div>
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Category
+                    </label>
+
+                    <select
+                            class="form-select"
+                            id="filterCategory"
+                            onchange="changeCategoryFilter()">
+
+                        <option value="">
+                            Tất cả Category
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="table-responsive">
+
+        <table class="table table-bordered table-hover align-middle">
+
+            <thead class="table-dark">
+
+            <tr>
+                <th>STT</th>
+                <th>Ảnh</th>
+                <th>Tên Product</th>
+                <th>Category</th>
+                <th>User</th>
+                <th>Giá</th>
+                <th>Số lượng</th>
+                <th>Mô tả</th>
+                <th>Thao tác</th>
+            </tr>
+
+            </thead>
+
+            <tbody id="productBody"></tbody>
+
+        </table>
+
+    </div>
+
+
+    <div
+            class="modal fade"
+            id="productModal"
+            tabindex="-1">
+
+        <div class="modal-dialog modal-lg">
+
+            <div class="modal-content">
+
+                <form id="productForm">
+
+                    <div class="modal-header">
+
+                        <h5
+                                class="modal-title"
+                                id="productModalTitle">
+                            Product
+                        </h5>
+
+                        <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal">
+                        </button>
+
+                    </div>
+
+
+                    <div class="modal-body">
+
+                        <input
+                                type="hidden"
+                                id="productId">
+
+                        <input
+                                type="hidden"
+                                id="productCurrentImages">
+
+
+                        <div class="row g-3">
+
+                            <div class="col-md-12">
+
+                                <label class="form-label">
+                                    Tên Product
+                                </label>
+
+                                <input
+                                        type="text"
+                                        class="form-control"
+                                        id="productTitle"
+                                        required>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    Category
+                                </label>
+
+                                <select
+                                        class="form-select"
+                                        id="productCategory"
+                                        required>
+                                </select>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    User
+                                </label>
+
+                                <select
+                                        class="form-select"
+                                        id="productUser"
+                                        required>
+                                </select>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    Giá
+                                </label>
+
+                                <input
+                                        type="number"
+                                        class="form-control"
+                                        id="productPrice"
+                                        min="0"
+                                        required>
+
+                            </div>
+
+
+                            <div class="col-md-6">
+
+                                <label class="form-label">
+                                    Số lượng
+                                </label>
+
+                                <input
+                                        type="number"
+                                        class="form-control"
+                                        id="productQuantity"
+                                        min="0"
+                                        required>
+
+                            </div>
+
+
+                            <div class="col-md-12">
+
+                                <label class="form-label">
+                                    Ảnh Product
+                                </label>
+
+                                <input
+                                        type="file"
+                                        class="form-control"
+                                        id="productImages"
+                                        accept="image/*">
+
+                                <div
+                                        id="productImagePreview"
+                                        class="mt-2">
+                                </div>
+
+                            </div>
+
+
+                            <div class="col-md-12">
+
+                                <label class="form-label">
+                                    Mô tả
+                                </label>
+
+                                <textarea
+                                        class="form-control"
+                                        id="productDesc"
+                                        rows="3">
+                                </textarea>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+
+                        <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+                            Đóng
+                        </button>
+
+                        <button
+                                type="submit"
+                                class="btn btn-primary">
+                            Lưu
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<th:block layout:fragment="script">
+
+<script>
+
+let productModal;
+let editingProduct = false;
+let products = [];
+let categories = [];
+let users = [];
+
+
+$(document).ready(function () {
+
+    productModal = new bootstrap.Modal(
+        document.getElementById("productModal")
+    );
+
+    $("#productForm").submit(function (event) {
+
+        event.preventDefault();
+
+        saveProduct();
+    });
+
+    loadReferenceData();
+});
+
+
+function graphqlRequest(query, variables = {}) {
+
+    return $.ajax({
+
+        url: "/graphql",
+
+        type: "POST",
+
+        contentType: "application/json",
+
+        data: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+
+    }).then(function (response) {
+
+        if (response.errors && response.errors.length > 0) {
+
+            return $.Deferred()
+                .reject({
+                    responseJSON: response,
+                    message: response.errors[0].message
+                })
+                .promise();
+        }
+
+        return response.data;
+    });
+}
+
+
+function loadReferenceData() {
+
+    const query = `
+        query {
+
+            categories {
+                id
+                name
+            }
+
+            users {
+                id
+                fullname
+                email
+            }
+        }
+    `;
+
+    graphqlRequest(query)
+
+        .done(function (data) {
+
+            categories = data.categories || [];
+            users = data.users || [];
+
+            renderCategoryOptions();
+            renderUserOptions();
+
+            loadProducts();
+        });
+}
+
+
+function renderCategoryOptions() {
+
+    let filter = `
+        <option value="">
+            Tất cả Category
+        </option>
+    `;
+
+    let form = `
+        <option value="">
+            -- Chọn Category --
+        </option>
+    `;
+
+    categories.forEach(function (category) {
+
+        filter += `
+            <option value="${category.id}">
+                ${escapeHtml(category.name)}
+            </option>
+        `;
+
+        form += `
+            <option value="${category.id}">
+                ${escapeHtml(category.name)}
+            </option>
+        `;
+    });
+
+    $("#filterCategory").html(filter);
+
+    $("#productCategory").html(form);
+}
+
+
+function renderUserOptions() {
+
+    let html = `
+        <option value="">
+            -- Chọn User --
+        </option>
+    `;
+
+    users.forEach(function (user) {
+
+        html += `
+            <option value="${user.id}">
+                ${escapeHtml(user.fullname)}
+            </option>
+        `;
+    });
+
+    $("#productUser").html(html);
+}
+
+
+function loadProducts() {
+
+    const query = `
+        query {
+
+            productsByPriceAsc {
+
+                id
+                title
+                quantity
+                desc
+                price
+                images
+
+                user {
+                    id
+                    fullname
+                }
+
+                category {
+                    id
+                    name
+                }
+            }
+        }
+    `;
+
+    graphqlRequest(query)
+
+        .done(function (data) {
+
+            products =
+                data.productsByPriceAsc || [];
+
+            renderProducts();
+        });
+}
+
+
+function changeCategoryFilter() {
+
+    const categoryId =
+        $("#filterCategory").val();
+
+    if (!categoryId) {
+
+        loadProducts();
+        return;
+    }
+
+    const query = `
+        query ProductsByCategory(
+            $categoryId: ID!
+        ) {
+
+            productsByCategory(
+                categoryId: $categoryId
+            ) {
+
+                id
+                title
+                quantity
+                desc
+                price
+                images
+
+                user {
+                    id
+                    fullname
+                }
+
+                category {
+                    id
+                    name
+                }
+            }
+        }
+    `;
+
+    graphqlRequest(
+        query,
+        {
+            categoryId: String(categoryId)
+        }
+    )
+
+    .done(function (data) {
+
+        products =
+            data.productsByCategory || [];
+
+        products.sort(
+            (a, b) =>
+                Number(a.price)
+                - Number(b.price)
+        );
+
+        renderProducts();
+    });
+}
+
+
+function renderProducts() {
+
+    const keyword =
+        $("#filterKeyword")
+            .val()
+            .toLowerCase()
+            .trim();
+
+    const list =
+        products.filter(function (product) {
+
+            return !keyword
+                || product.title
+                    .toLowerCase()
+                    .includes(keyword);
+        });
+
+
+    if (list.length === 0) {
+
+        $("#productBody").html(`
+            <tr>
+                <td
+                    colspan="9"
+                    class="text-center">
+
+                    Không có dữ liệu
+
+                </td>
+            </tr>
+        `);
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    list.forEach(function (product, index) {
+
+        html += `
+            <tr>
+
+                <td>
+                    ${index + 1}
+                </td>
+
+                <td>
+
+                    ${
+                        product.images
+
+                        ? `
+                            <img
+                                src="${escapeHtml(
+                                    imageUrl(
+                                        product.images
+                                    )
+                                )}"
+
+                                width="70"
+                                height="70"
+
+                                style="
+                                    object-fit: cover;
+                                    border-radius: 6px;
+                                ">
+                        `
+
+                        : `
+                            <span class="text-muted">
+                                Không có
+                            </span>
+                        `
+                    }
+
+                </td>
+
+                <td>
+                    ${escapeHtml(product.title)}
+                </td>
+
+                <td>
+                    ${escapeHtml(product.category.name)}
+                </td>
+
+                <td>
+                    ${escapeHtml(product.user.fullname)}
+                </td>
+
+                <td>
+                    ${formatPrice(product.price)}
+                </td>
+
+                <td>
+                    ${product.quantity}
+                </td>
+
+                <td>
+                    ${escapeHtml(product.desc || "")}
+                </td>
+
+                <td>
+
+                    <button
+                        class="btn btn-warning btn-sm"
+                        onclick="editProduct('${product.id}')">
+
+                        Sửa
+
+                    </button>
+
+                    <button
+                        class="btn btn-danger btn-sm"
+                        onclick="deleteProduct('${product.id}')">
+
+                        Xóa
+
+                    </button>
+
+                </td>
+
+            </tr>
+        `;
+    });
+
+
+    $("#productBody").html(html);
+}
+
+
+function openCreateProduct() {
+
+    editingProduct = false;
+
+    $("#productModalTitle")
+        .text("Thêm Product");
+
+    $("#productId").val("");
+    $("#productTitle").val("");
+    $("#productQuantity").val("");
+    $("#productPrice").val("");
+    $("#productDesc").val("");
+    $("#productCategory").val("");
+    $("#productUser").val("");
+    $("#productImages").val("");
+    $("#productCurrentImages").val("");
+
+    $("#productImagePreview")
+        .html("");
+
+    productModal.show();
+}
+
+
+function editProduct(id) {
+
+    const query = `
+        query($id: ID!) {
+
+            product(id: $id) {
+
+                id
+                title
+                quantity
+                desc
+                price
+                images
+
+                user {
+                    id
+                }
+
+                category {
+                    id
+                }
+            }
+        }
+    `;
+
+
+    graphqlRequest(
+        query,
+        {
+            id: String(id)
+        }
+    )
+
+    .done(function (data) {
+
+        const product =
+            data.product;
+
+        editingProduct = true;
+
+        $("#productModalTitle")
+            .text("Sửa Product");
+
+        $("#productId")
+            .val(product.id);
+
+        $("#productTitle")
+            .val(product.title);
+
+        $("#productQuantity")
+            .val(product.quantity);
+
+        $("#productPrice")
+            .val(product.price);
+
+        $("#productDesc")
+            .val(product.desc || "");
+
+        $("#productUser")
+            .val(product.user.id);
+
+        $("#productCategory")
+            .val(product.category.id);
+
+        $("#productImages")
+            .val("");
+
+        $("#productCurrentImages")
+            .val(product.images || "");
+
+
+        if (product.images) {
+
+            $("#productImagePreview")
+                .html(`
+                    <img
+                        src="${escapeHtml(
+                            imageUrl(
+                                product.images
+                            )
+                        )}"
+
+                        width="100"
+                        height="100"
+
+                        style="
+                            object-fit: cover;
+                            border-radius: 6px;
+                        ">
+                `);
+
+        } else {
+
+            $("#productImagePreview")
+                .html("");
+        }
+
+
+        productModal.show();
+    });
+}
+
+
+function saveProduct() {
+
+    const id =
+        $("#productId").val();
+
+    const title =
+        $("#productTitle")
+            .val()
+            .trim();
+
+    const quantity =
+        Number(
+            $("#productQuantity").val()
+        );
+
+    const price =
+        Number(
+            $("#productPrice").val()
+        );
+
+    const desc =
+        $("#productDesc")
+            .val()
+            .trim();
+
+    const userId =
+        $("#productUser").val();
+
+    const categoryId =
+        $("#productCategory").val();
+
+    const oldImages =
+        $("#productCurrentImages").val();
+
+    const file =
+        $("#productImages")[0]
+            .files[0];
+
+
+    uploadProductImage(file)
+
+        .done(function (path) {
+
+            const images =
+                path
+                || oldImages
+                || null;
+
+
+            if (editingProduct) {
+
+                updateProduct(
+                    id,
+                    title,
+                    quantity,
+                    desc,
+                    price,
+                    images,
+                    userId,
+                    categoryId
+                );
+
+            } else {
+
+                createProduct(
+                    title,
+                    quantity,
+                    desc,
+                    price,
+                    images,
+                    userId,
+                    categoryId
+                );
+            }
+        })
+
+        .fail(function () {
+
+            showMessage(
+                "Không thể upload ảnh.",
+                "danger"
+            );
+        });
+}
+
+
+function uploadProductImage(file) {
+
+    if (!file) {
+
+        return $.Deferred()
+            .resolve(null)
+            .promise();
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "file",
+        file
+    );
+
+
+    return $.ajax({
+
+        url:
+            "/upload/product-image",
+
+        type:
+            "POST",
+
+        data:
+            formData,
+
+        processData:
+            false,
+
+        contentType:
+            false
+
+    }).then(function (response) {
+
+        return response.path;
+    });
+}
+
+
+function createProduct(
+    title,
+    quantity,
+    desc,
+    price,
+    images,
+    userId,
+    categoryId
+) {
+
+    const mutation = `
+        mutation(
+            $title: String!,
+            $quantity: Int!,
+            $desc: String,
+            $price: Float!,
+            $images: String,
+            $userId: ID!,
+            $categoryId: ID!
+        ) {
+
+            createProduct(
+                title: $title,
+                quantity: $quantity,
+                desc: $desc,
+                price: $price,
+                images: $images,
+                userId: $userId,
+                categoryId: $categoryId
+            ) {
+                id
+            }
+        }
+    `;
+
+
+    executeSaveMutation(
+        mutation,
+        {
+            title: title,
+            quantity: quantity,
+            desc: desc || null,
+            price: price,
+            images: images,
+            userId: String(userId),
+            categoryId: String(categoryId)
+        },
+        "Thêm Product thành công."
+    );
+}
+
+
+function updateProduct(
+    id,
+    title,
+    quantity,
+    desc,
+    price,
+    images,
+    userId,
+    categoryId
+) {
+
+    const mutation = `
+        mutation(
+            $id: ID!,
+            $title: String!,
+            $quantity: Int!,
+            $desc: String,
+            $price: Float!,
+            $images: String,
+            $userId: ID!,
+            $categoryId: ID!
+        ) {
+
+            updateProduct(
+                id: $id,
+                title: $title,
+                quantity: $quantity,
+                desc: $desc,
+                price: $price,
+                images: $images,
+                userId: $userId,
+                categoryId: $categoryId
+            ) {
+                id
+            }
+        }
+    `;
+
+
+    executeSaveMutation(
+        mutation,
+        {
+            id: String(id),
+            title: title,
+            quantity: quantity,
+            desc: desc || null,
+            price: price,
+            images: images,
+            userId: String(userId),
+            categoryId: String(categoryId)
+        },
+        "Cập nhật Product thành công."
+    );
+}
+
+
+function executeSaveMutation(
+    mutation,
+    variables,
+    message
+) {
+
+    graphqlRequest(
+        mutation,
+        variables
+    )
+
+    .done(function () {
+
+        productModal.hide();
+
+        showMessage(
+            message,
+            "success"
+        );
+
+        loadProducts();
+    })
+
+    .fail(function (error) {
+
+        showMessage(
+            getErrorMessage(error),
+            "danger"
+        );
+    });
+}
+
+
+function deleteProduct(id) {
+
+    if (!confirm(
+        "Bạn có chắc muốn xóa Product này?"
+    )) {
+        return;
+    }
+
+
+    const mutation = `
+        mutation($id: ID!) {
+
+            deleteProduct(
+                id: $id
+            )
+        }
+    `;
+
+
+    graphqlRequest(
+        mutation,
+        {
+            id: String(id)
+        }
+    )
+
+    .done(function () {
+
+        showMessage(
+            "Xóa Product thành công.",
+            "success"
+        );
+
+        loadProducts();
+    });
+}
+
+
+function imageUrl(value) {
+
+    if (!value) {
+        return "";
+    }
+
+    if (
+        value.startsWith("/")
+        || value.startsWith("http://")
+        || value.startsWith("https://")
+    ) {
+
+        return value;
+    }
+
+    return "/uploads/products/"
+        + value;
+}
+
+
+function formatPrice(price) {
+
+    return new Intl.NumberFormat(
+        "vi-VN",
+        {
+            style: "currency",
+            currency: "VND"
+        }
+    ).format(price);
+}
+
+
+function showMessage(
+    message,
+    type
+) {
+
+    $("#productMessage").html(`
+        <div class="alert alert-${type}">
+            ${escapeHtml(message)}
+        </div>
+    `);
+}
+
+
+function getErrorMessage(error) {
+
+    if (
+        error
+        && error.responseJSON
+        && error.responseJSON.errors
+    ) {
+
+        return error
+            .responseJSON
+            .errors[0]
+            .message;
+    }
+
+    return "Có lỗi xảy ra.";
+}
+
+
+function escapeHtml(value) {
+
+    if (
+        value === null
+        || value === undefined
+    ) {
+        return "";
+    }
+
+    return $("<div>")
+        .text(String(value))
+        .html();
+}
+
+</script>
+
+</th:block>
+
+</body>
+</html>

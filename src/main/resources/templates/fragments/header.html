@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+<header th:fragment="header">
+
+    <nav class="navbar navbar-dark bg-dark">
+
+        <div class="container">
+
+            <a
+                class="navbar-brand"
+                th:href="@{/ajax/products}">
+                AJAX CRUD
+            </a>
+
+            <div class="d-flex gap-2">
+
+                <a
+                    class="btn btn-outline-light"
+                    th:href="@{/ajax/products}">
+                    Products
+                </a>
+
+                <a
+                    class="btn btn-outline-light"
+                    th:href="@{/ajax/categories}">
+                    Categories
+                </a>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+</header>
+
+</body>
+</html>
